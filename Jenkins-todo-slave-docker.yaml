@@ -1,0 +1,83 @@
+node('node1'){
+    stage('variables')
+    {
+
+sh '''echo "BUILD_NUMBER" :: $BUILD_NUMBER
+echo "BUILD_ID" :: $BUILD_ID
+echo "BUILD_DISPLAY_NAME" :: $BUILD_DISPLAY_NAME
+echo "JOB_NAME" :: $JOB_NAME
+echo "JOB_BASE_NAME" :: $JOB_BASE_NAME
+echo "BUILD_TAG" :: $BUILD_TAG
+echo "EXECUTOR_NUMBER" :: $EXECUTOR_NUMBER
+echo "NODE_NAME" :: $NODE_NAME
+echo "NODE_LABELS" :: $NODE_LABELS
+echo "WORKSPACE" :: $WORKSPACE
+echo "JENKINS_HOME" :: $JENKINS_HOME
+echo "JENKINS_URL" :: $JENKINS_URL
+echo "BUILD_URL" ::$BUILD_URL
+echo "JOB_URL" :: $JOB_URL'''
+}
+
+
+node('node1') {
+
+stage('download code') {
+  git credentialsId: 'git', url: 'https://github.com/anilbidari/todorestnov2023.git'
+}
+
+stage('compile my code') {
+  sh 'mvn compile'
+}
+
+stage('sonar analysis') 
+sh 'mvn sonar:sonar -Dsonar.projectKey=CloudEnabled -Dsonar.host.url=http://13.229.57.35:9000 -Dsonar.login=f9231ba43d851379679ad11c17ea2aa6078c0668'
+
+stage('run unit tests for code') {
+  sh 'mvn test'
+}
+
+stage('generate report') {
+  sh 'mvn surefire-report:report'
+}
+
+stage('create package') {
+  sh 'mvn package'
+}
+
+stage('archive jar') {
+archiveArtifacts artifacts: 'target/todorest-0.0.1-SNAPSHOT.jar', followSymlinks: false
+}
+
+stage('build docker image') {
+sh 'sudo docker build -t anilbidari/todo:$BUILD_NUMBER.0 .'
+}
+
+stage ('docker hub login')
+sh 'sudo docker login -u anilbidari -p root1234'
+
+stage('push docker image')
+sh 'sudo docker push anilbidari/todo:$BUILD_NUMBER.0'
+
+stage('remove N1 container')
+sh 'sudo docker rm -f N1'
+
+stage('deploy app')
+sh 'sudo docker run -itd --name N1 -p 5000:8080 anilbidari/todo:$BUILD_NUMBER.0 /bin/bash'
+
+stage('sleep 30 secs')
+sleep 30
+
+stage('check app running')
+sh 'curl http://localhost:5000'
+}
+}
+
+
+
+
+
+
+
+
+
+
