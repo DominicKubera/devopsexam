@@ -1,0 +1,38 @@
+node {
+
+stage('download code') {
+  git credentialsId: 'git', url: 'https://github.com/anilbidari/todorestnov2023.git'
+}
+
+
+stage('compile my code') {
+  sh 'mvn compile'
+}
+
+stage('sonar analysis') 
+sh 'mvn sonar:sonar -Dsonar.projectKey=CloudEnabled -Dsonar.host.url=http://13.229.57.35:9000 -Dsonar.login=f9231ba43d851379679ad11c17ea2aa6078c0668'
+
+stage('run unit tests for code') {
+  sh 'mvn test'
+}
+
+stage('generate report') {
+  sh 'mvn surefire-report:report'
+}
+
+stage('create package') {
+  sh 'mvn package'
+}
+
+stage('archive jar') {
+archiveArtifacts artifacts: 'target/todorest-0.0.1-SNAPSHOT.jar', followSymlinks: false
+}
+
+stage('deploy app') {
+sh 'nohup java -jar target/todorest-0.0.1-SNAPSHOT.jar /tmp 2>> /dev/null >> /dev/null &'
+}
+
+stage('check app') {
+sh 'curl http://localhost:8080'
+}
+}
